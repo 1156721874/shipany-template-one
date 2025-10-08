@@ -116,10 +116,27 @@ export const providerMap = providers
 
 export const authOptions: NextAuthConfig = {
   providers,
+    /**
+     * 指定 NextAuth 内置页面的自定义路径，覆盖默认的 /api/auth/signin 等页面。
+     *
+     * 🔍 默认行为：
+     * 如果不设置 pages，NextAuth 会使用内置的登录页面，路径是：
+     *
+     * /api/auth/signin → 显示所有 provider 的登录按钮
+     * /api/auth/signup → 注册页（如果有）
+     * /api/auth/error → 错误页
+     */
   pages: {
     signIn: "/auth/signin",
   },
   callbacks: {
+      /**
+       * user	用户信息（来自 OAuth 提供商或 authorize）
+       * account	账户信息（如 type: "oauth", provider: "google"）
+       * profile	原始 OAuth 响应数据（如 Google 返回的 JSON）
+       * email	邮箱相关（主要用于邮件验证）
+       * credentials	仅用于 credentials 提供商，如用户名密码
+       */
     async signIn({ user, account, profile, email, credentials }) {
       const isAllowedToSignIn = true;
       if (isAllowedToSignIn) {
@@ -138,12 +155,37 @@ export const authOptions: NextAuthConfig = {
       else if (new URL(url).origin === baseUrl) return url;
       return baseUrl;
     },
+      /**
+       * 定制客户端可用的会话（session）对象。这是前端 useSession() 拿到的数据来源。
+       *
+       * 🔁 执行时机：
+       * 每次前端调用 getSession() 或 useSession() 时触发。
+       *
+       * 🧩 参数说明：
+       * 参数	说明
+       * session	即将返回给客户端的会话对象
+       * token	JWT 令牌内容（包含你在 jwt 回调中添加的数据）
+       * user	用户信息（仅在首次登录时存在）
+       */
     async session({ session, token, user }) {
       if (token && token.user && token.user) {
         session.user = token.user;
       }
       return session;
     },
+      /**
+       * 生成或更新 JWT 令牌。这是整个认证流程中最关键的“数据中枢”。
+       *
+       * 🔁 执行时机：
+       * 用户首次登录成功后
+       * 每次会话更新时（如刷新）
+       * 每次调用 getToken() 时
+       * 🧩 参数说明：
+       * 参数	说明
+       * token	JWT 令牌对象（持久化存储在客户端 cookie 中）
+       * user	用户信息（仅首次登录时存在）
+       * account	账户信息（仅首次登录时存在）
+       */
     async jwt({ token, user, account }) {
       // Persist the OAuth access_token and or the user id to the token right after signin
       try {
